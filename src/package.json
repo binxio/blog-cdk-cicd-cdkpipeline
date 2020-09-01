@@ -1,0 +1,24 @@
+{
+  "name": "example",
+  "version": "1.0.0",
+  "description": "example node app",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/binxio/blog-cicd-cdkpipeline.git"
+  },
+  "author": "laurensknoll@binx.io",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/binxio/blog-cicd-cdkpipeline/issues"
+  },
+  "homepage": "https://github.com/binxio/blog-cicd-cdkpipeline#readme",
+  "dependencies": {
+    "express": "^4.17.1",
+    "http-terminator": "^2.0.3"
+  }
+}
