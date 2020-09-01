@@ -1,3 +1,4 @@
+import * as path from 'path';
 import * as cdk from '@aws-cdk/core';
 import * as codepipeline from '@aws-cdk/aws-codepipeline';
 import * as codepipeline_actions from '@aws-cdk/aws-codepipeline-actions';
@@ -7,7 +8,6 @@ import * as iam from '@aws-cdk/aws-iam';
 import * as pipelines from '@aws-cdk/pipelines';
 
 import { LocalDeploymentStage } from './local-deployment';
-import { ServiceStack } from './service';
 
 // NOTE: Create the pipeline and CI/CD infra such as ECR/S3
 export class CicdInfraStack extends cdk.Stack {
@@ -19,12 +19,12 @@ export class CicdInfraStack extends cdk.Stack {
     });
 
     const sourceArtifact = new codepipeline.Artifact('github');
-    const cloudAssemblyArtifact = new codepipeline.Artifact('templates');
+    const cdkOutputArtifact = new codepipeline.Artifact('templates');
     const containerArtifact = new codepipeline.Artifact('containers');
 
     const pipeline = new pipelines.CdkPipeline(this, 'CdkPipeline', {
       pipelineName: 'cdk-cdkpipeline',
-      cloudAssemblyArtifact: cloudAssemblyArtifact,
+      cloudAssemblyArtifact: cdkOutputArtifact,
 
       sourceAction: new codepipeline_actions.GitHubSourceAction({
         actionName: 'DownloadSources',
@@ -40,10 +40,13 @@ export class CicdInfraStack extends cdk.Stack {
 
       synthAction: pipelines.SimpleSynthAction.standardNpmSynth({
         sourceArtifact: sourceArtifact,
-        cloudAssemblyArtifact: cloudAssemblyArtifact,
+        cloudAssemblyArtifact: cdkOutputArtifact,
         subdirectory: 'cdk',
       }),
     });
+
+    // Build and Publish application artifacts
+    const buildStage = pipeline.addStage('BuildApp')
 
     const buildRole = new iam.Role(this, 'DockerBuildRole', {
       assumedBy: new iam.ServicePrincipal('codebuild.amazonaws.com'),
@@ -59,7 +62,6 @@ export class CicdInfraStack extends cdk.Stack {
       buildSpec: this.getDockerBuildSpec(repository.repositoryUri),
     });
 
-    const buildStage = pipeline.addStage('BuildApp')
     buildStage.addActions(new codepipeline_actions.CodeBuildAction({
       actionName: 'DockerBuild',
       project: build,
@@ -67,15 +69,15 @@ export class CicdInfraStack extends cdk.Stack {
       outputs: [ containerArtifact ],
     }));
 
-    
+    // Deploy - Local
     const localDeployStage = pipeline.addStage('LocalDeploy');
-    const localStage = new LocalDeploymentStage(this, 'LocalStage');
 
+    const localStage = new LocalDeploymentStage(this, 'LocalStage');
     localDeployStage.addActions(new codepipeline_actions.CloudFormationCreateUpdateStackAction({
       actionName: 'Service.Deploy',
       extraInputs: [ containerArtifact ],
       stackName: localStage.serviceStack.stackName,
-      templatePath: cloudAssemblyArtifact.atPath(localStage.serviceStack.artifactId),
+      templatePath: cdkOutputArtifact.atPath(this.getStackArtifactTemplatePath(localStage, localStage.serviceStack.artifactId)),
       adminPermissions: true,
       parameterOverrides: {
         'ImageTag': containerArtifact.getParam('image.json', 'Tag'),
@@ -116,4 +118,12 @@ export class CicdInfraStack extends cdk.Stack {
     });
   }
 
+  getStackArtifactTemplatePath(stage: cdk.Stage, artifactId: string): string {
+    const stageAssembly = stage.synth();
+    const stageStackArtifact = stageAssembly.getStackArtifact(artifactId);
+
+    const fullTemplatePath = path.join(stageAssembly.directory, stageStackArtifact.templateFile);
+    const artifactTemplatePath = path.relative('cdk.out/', fullTemplatePath);
+    return artifactTemplatePath;
+  }
 }
