@@ -1,5 +1,4 @@
 import * as cdk from '@aws-cdk/core';
-import * as ecr from '@aws-cdk/aws-ecr'
 import { ServiceStack } from './service';
 
 export interface LocalDeploymentStageProps extends cdk.StageProps {

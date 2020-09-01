@@ -16,9 +16,9 @@ export class CicdInfraStack extends cdk.Stack {
       repositoryName: 'cdk-cicd/app',
     });
 
-    const sourceArtifact = new codepipeline.Artifact();
-    const cloudAssemblyArtifact = new codepipeline.Artifact();
-    const containerArtifact = new codepipeline.Artifact();
+    const sourceArtifact = new codepipeline.Artifact('github');
+    const cloudAssemblyArtifact = new codepipeline.Artifact('templates');
+    const containerArtifact = new codepipeline.Artifact('containers');
 
     const pipeline = new CdkPipeline(this, 'CdkPipeline', {
       pipelineName: 'cdk-cdkpipeline',
