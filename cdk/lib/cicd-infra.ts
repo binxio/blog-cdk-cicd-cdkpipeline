@@ -52,41 +52,9 @@ export class CicdInfraStack extends cdk.Stack {
       role: buildRole,
       environment: {
         buildImage: codebuild.LinuxBuildImage.STANDARD_4_0,
-        environmentVariables: {
-          'REPOSITORY_URI': { value: repository.repositoryUri },
-        },
         privileged: true,
       },
-      buildSpec: codebuild.BuildSpec.fromObject({
-        version: '0.2',
-        phases: {
-          pre_build: {
-            commands: [
-              'echo Logging in to Amazon ECR...',
-              '$(aws ecr get-login --no-include-email --region $AWS_DEFAULT_REGION)',
-            ]
-          },
-          build: {
-            commands: [
-              'echo Build started on `date`',
-              'echo Building the Docker image...',
-              'docker build -t $REPOSITORY_URI:$CODEBUILD_RESOLVED_SOURCE_VERSION .',
-            ]
-          },
-          post_build: {
-            commands: [
-              'echo Build completed on `date`',
-              'echo Pushing the Docker image...',
-              'docker push $REPOSITORY_URI:$CODEBUILD_RESOLVED_SOURCE_VERSION',
-              'printf \'{"Tag":"%s"}\' "$REPOSITORY_URI:$CODEBUILD_RESOLVED_SOURCE_VERSION" > /tmp/image.json',
-            ]
-          },
-        },
-        artifacts: {
-          files: [ '/tmp/image.json' ],
-          'discard-paths': 'yes',
-        }
-      }),
+      buildSpec: this.getDockerBuildSpec(repository.repositoryUri),
     });
 
     const buildStage = pipeline.addStage('BuildApp')
@@ -103,4 +71,38 @@ export class CicdInfraStack extends cdk.Stack {
 
     pipeline.addApplicationStage(localDeployment);
   }
+
+  getDockerBuildSpec(repositoryUri: string): codebuild.BuildSpec {
+    return codebuild.BuildSpec.fromObject({
+      version: '0.2',
+      phases: {
+        pre_build: {
+          commands: [
+            'echo Logging in to Amazon ECR...',
+            '$(aws ecr get-login --no-include-email --region $AWS_DEFAULT_REGION)',
+          ]
+        },
+        build: {
+          commands: [
+            'echo Build started on `date`',
+            'echo Building the Docker image...',
+            `docker build -t ${repositoryUri}:$CODEBUILD_RESOLVED_SOURCE_VERSION .`,
+          ]
+        },
+        post_build: {
+          commands: [
+            'echo Build completed on `date`',
+            'echo Pushing the Docker image...',
+            `docker push ${repositoryUri}:$CODEBUILD_RESOLVED_SOURCE_VERSION`,
+            `printf \'{"Tag":"%s"}\' "${repositoryUri}:$CODEBUILD_RESOLVED_SOURCE_VERSION" > /tmp/image.json`,
+          ]
+        },
+      },
+      artifacts: {
+        files: ['/tmp/image.json'],
+        'discard-paths': 'yes',
+      }
+    });
+  }
+
 }
