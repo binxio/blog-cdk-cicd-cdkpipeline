@@ -21,7 +21,9 @@ export class AppInfraStack extends cdk.Stack {
         // NOTE: Specify your source repository here.
         owner: 'binxio',
         repo: 'blog-cdk-cicd-cdkpipeline',
-        oauthToken: cdk.SecretValue.ssmSecure('/github.com/binxio', '1'),
+        oauthToken: cdk.SecretValue.secretsManager('/github.com/binxio', {
+          jsonField: 'token'
+        }),
         output: sourceArtifact,
       }),
 
