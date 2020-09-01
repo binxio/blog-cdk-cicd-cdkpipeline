@@ -16,7 +16,7 @@ export class AppInfraStack extends cdk.Stack {
       cloudAssemblyArtifact: cloudAssemblyArtifact,
 
       sourceAction: new codepipeline_actions.GitHubSourceAction({
-        actionName: 'Download Sources',
+        actionName: 'DownloadSources',
 
         // NOTE: Specify your source repository here.
         owner: 'binxio',
