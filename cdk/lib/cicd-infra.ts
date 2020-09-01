@@ -71,14 +71,14 @@ export class CicdInfraStack extends cdk.Stack {
     const localDeployStage = pipeline.addStage('LocalDeploy');
     const localStage = new LocalDeploymentStage(this, 'LocalStage');
 
-    const serviceImage = ServiceStack.ImageTagParameter;
     localDeployStage.addActions(new codepipeline_actions.CloudFormationCreateUpdateStackAction({
       actionName: 'Service.Deploy',
+      extraInputs: [ containerArtifact ],
       stackName: localStage.serviceStack.stackName,
       templatePath: cloudAssemblyArtifact.atPath(localStage.serviceStack.artifactId),
       adminPermissions: true,
       parameterOverrides: {
-        serviceImage: containerArtifact.getParam('image.json', 'Tag'),
+        'ImageTag': containerArtifact.getParam('image.json', 'Tag'),
       },
     }));
   }
