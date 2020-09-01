@@ -5,6 +5,7 @@ import * as codebuild from '@aws-cdk/aws-codebuild';
 import * as ecr from '@aws-cdk/aws-ecr'
 import * as iam from '@aws-cdk/aws-iam';
 import { CdkPipeline, SimpleSynthAction } from '@aws-cdk/pipelines';
+import { LocalDeploymentStage } from './local-deployment';
 
 // NOTE: Create the pipeline and CI/CD infra such as ECR/S3
 export class CicdInfraStack extends cdk.Stack {
@@ -50,6 +51,7 @@ export class CicdInfraStack extends cdk.Stack {
     const build = new codebuild.Project(this, 'DockerBuild', {
       role: buildRole,
       environment: {
+        buildImage: codebuild.LinuxBuildImage.STANDARD_4_0,
         environmentVariables: {
           'REPOSITORY_URI': { value: repository.repositoryUri },
         },
@@ -76,8 +78,13 @@ export class CicdInfraStack extends cdk.Stack {
               'echo Build completed on `date`',
               'echo Pushing the Docker image...',
               'docker push $REPOSITORY_URI:$CODEBUILD_RESOLVED_SOURCE_VERSION',
+              'printf \'{"Tag":"%s"}\' "$REPOSITORY_URI:$CODEBUILD_RESOLVED_SOURCE_VERSION" > /tmp/image.json',
             ]
-          }
+          },
+        },
+        artifacts: {
+          files: [ '/tmp/image.json' ],
+          'discard-paths': 'yes',
         }
       }),
     });
@@ -87,7 +94,13 @@ export class CicdInfraStack extends cdk.Stack {
       actionName: 'DockerBuild',
       project: build,
       input: sourceArtifact,
+      outputs: [ containerArtifact ],
     }));
 
+    const deployStage = pipeline.addApplicationStage(
+      new LocalDeploymentStage(this, 'LocalStage', {
+        repository: repository,
+        imageTag: containerArtifact.getParam('image.json', 'Tag'),
+      }));
   }
 }
