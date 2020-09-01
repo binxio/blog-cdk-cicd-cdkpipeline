@@ -107,7 +107,7 @@ export class CicdInfraStack extends cdk.Stack {
             'echo Build completed on `date`',
             'echo Pushing the Docker image...',
             `docker push ${repositoryUri}:$CODEBUILD_RESOLVED_SOURCE_VERSION`,
-            `printf \'{"Tag":"%s"}\' "${repositoryUri}:$CODEBUILD_RESOLVED_SOURCE_VERSION" > /tmp/image.json`,
+            'printf \'{"Tag":"%s"}\' "$CODEBUILD_RESOLVED_SOURCE_VERSION" > /tmp/image.json',
           ]
         },
       },
