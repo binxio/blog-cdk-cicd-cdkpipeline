@@ -4,13 +4,10 @@ import * as ecr from '@aws-cdk/aws-ecr';
 import * as ecs from '@aws-cdk/aws-ecs';
 import * as ecs_patterns from '@aws-cdk/aws-ecs-patterns';
 
-export interface ServiceStackProps extends cdk.StackProps {
-
-  imageTag: string,
-}
-
 export class ServiceStack extends cdk.Stack {
-  constructor(scope: cdk.Construct, id: string, props: ServiceStackProps) {
+  static readonly ImageTagParameter: string = "ImageTag";
+
+  constructor(scope: cdk.Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
     const vpc = new ec2.Vpc(this, 'MyVpc', {
@@ -29,6 +26,10 @@ export class ServiceStack extends cdk.Stack {
     });
 
     const repository = ecr.Repository.fromRepositoryName(this, 'Repository', 'cdk-cicd/app');
+    const imageTag = new cdk.CfnParameter(this, ServiceStack.ImageTagParameter, {
+      type: 'String',
+      default: 'latest',
+    });
 
     const cluster = new ecs.Cluster(this, 'Cluster', {
       clusterName: 'cdk-cicd',
@@ -43,7 +44,7 @@ export class ServiceStack extends cdk.Stack {
       taskImageOptions: {
         containerName: 'app',
         containerPort: 8080,
-        image: ecs.ContainerImage.fromEcrRepository(repository, props.imageTag),
+        image: ecs.ContainerImage.fromEcrRepository(repository, imageTag.valueAsString),
       },
       publicLoadBalancer: true,
     });

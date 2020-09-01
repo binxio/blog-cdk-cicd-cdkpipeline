@@ -4,8 +4,10 @@ import * as codepipeline_actions from '@aws-cdk/aws-codepipeline-actions';
 import * as codebuild from '@aws-cdk/aws-codebuild';
 import * as ecr from '@aws-cdk/aws-ecr'
 import * as iam from '@aws-cdk/aws-iam';
-import { CdkPipeline, SimpleSynthAction } from '@aws-cdk/pipelines';
+import * as pipelines from '@aws-cdk/pipelines';
+
 import { LocalDeploymentStage } from './local-deployment';
+import { ServiceStack } from './service';
 
 // NOTE: Create the pipeline and CI/CD infra such as ECR/S3
 export class CicdInfraStack extends cdk.Stack {
@@ -20,7 +22,7 @@ export class CicdInfraStack extends cdk.Stack {
     const cloudAssemblyArtifact = new codepipeline.Artifact('templates');
     const containerArtifact = new codepipeline.Artifact('containers');
 
-    const pipeline = new CdkPipeline(this, 'CdkPipeline', {
+    const pipeline = new pipelines.CdkPipeline(this, 'CdkPipeline', {
       pipelineName: 'cdk-cdkpipeline',
       cloudAssemblyArtifact: cloudAssemblyArtifact,
 
@@ -36,7 +38,7 @@ export class CicdInfraStack extends cdk.Stack {
         output: sourceArtifact,
       }),
 
-      synthAction: SimpleSynthAction.standardNpmSynth({
+      synthAction: pipelines.SimpleSynthAction.standardNpmSynth({
         sourceArtifact: sourceArtifact,
         cloudAssemblyArtifact: cloudAssemblyArtifact,
         subdirectory: 'cdk',
@@ -65,11 +67,20 @@ export class CicdInfraStack extends cdk.Stack {
       outputs: [ containerArtifact ],
     }));
 
-    const localDeployment = new LocalDeploymentStage(this, 'LocalStage', {
-      imageTag: containerArtifact.getParam('image.json', 'Tag'),
-    })
+    
+    const localDeployStage = pipeline.addStage('LocalDeploy');
+    const localStage = new LocalDeploymentStage(this, 'LocalStage');
 
-    pipeline.addApplicationStage(localDeployment);
+    const serviceImage = ServiceStack.ImageTagParameter;
+    localDeployStage.addActions(new codepipeline_actions.CloudFormationCreateUpdateStackAction({
+      actionName: 'Service.Deploy',
+      stackName: localStage.serviceStack.stackName,
+      templatePath: cloudAssemblyArtifact.atPath(localStage.serviceStack.artifactId),
+      adminPermissions: true,
+      parameterOverrides: {
+        serviceImage: containerArtifact.getParam('image.json', 'Tag'),
+      },
+    }));
   }
 
   getDockerBuildSpec(repositoryUri: string): codebuild.BuildSpec {
