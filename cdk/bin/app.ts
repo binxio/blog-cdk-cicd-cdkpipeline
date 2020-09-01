@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 import 'source-map-support/register';
 import * as cdk from '@aws-cdk/core';
-import { AppInfraStack } from '../lib/app-infra';
+import { CicdInfraStack } from '../lib/cicd-infra';
 
 const app = new cdk.App();
-new AppInfraStack(app, 'PipelineStack');
+new CicdInfraStack(app, 'CicdInfraStack');
+
+app.synth();

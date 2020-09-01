@@ -1,13 +1,18 @@
 import * as cdk from '@aws-cdk/core';
+import * as ecr from '@aws-cdk/aws-ecr'
 import * as codepipeline from '@aws-cdk/aws-codepipeline';
 import * as codepipeline_actions from '@aws-cdk/aws-codepipeline-actions';
 import { CdkPipeline, SimpleSynthAction } from '@aws-cdk/pipelines';
 
-export class AppInfraStack extends cdk.Stack {
+// NOTE: Create the pipeline and CI/CD infra such as ECR/S3
+export class CicdInfraStack extends cdk.Stack {
   constructor(scope: cdk.Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
-    // The code that defines your stack goes here
+    const repository = new ecr.Repository(this, 'Repository', {
+      repositoryName: 'cdk-cicd',
+    });
+
     const sourceArtifact = new codepipeline.Artifact();
     const cloudAssemblyArtifact = new codepipeline.Artifact();
 
