@@ -1,12 +1,17 @@
-FROM node:14
+FROM node:14 AS build-env
 
 WORKDIR /app
 
-COPY src/package*.json /app/
+COPY src/ .
+
 RUN npm ci --only=production
 
-COPY src/ /app/
+FROM gcr.io/distroless/nodejs:14
+
+WORKDIR /app
+
+COPY --from=build-env /app .
 
 EXPOSE 8080
 
-CMD [ "node", "index.js" ]
+CMD [ "index.js" ]
