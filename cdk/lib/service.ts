@@ -6,8 +6,6 @@ import * as ecs_patterns from '@aws-cdk/aws-ecs-patterns';
 
 export interface ServiceStackProps extends cdk.StackProps {
 
-  repository: ecr.IRepository,
-
   imageTag: string,
 }
 
@@ -30,6 +28,8 @@ export class ServiceStack extends cdk.Stack {
       maxAzs: 2
     });
 
+    const repository = ecr.Repository.fromRepositoryName(this, 'Repository', 'cdk-cicd/app');
+
     const cluster = new ecs.Cluster(this, 'Cluster', {
       clusterName: 'cdk-cicd',
       vpc: vpc,
@@ -43,7 +43,7 @@ export class ServiceStack extends cdk.Stack {
       taskImageOptions: {
         containerName: 'app',
         containerPort: 8080,
-        image: ecs.ContainerImage.fromEcrRepository(props.repository, props.imageTag),
+        image: ecs.ContainerImage.fromEcrRepository(repository, props.imageTag),
       },
       publicLoadBalancer: true,
     });

@@ -97,10 +97,10 @@ export class CicdInfraStack extends cdk.Stack {
       outputs: [ containerArtifact ],
     }));
 
-    const deployStage = pipeline.addApplicationStage(
-      new LocalDeploymentStage(this, 'LocalStage', {
-        repository: repository,
-        imageTag: containerArtifact.getParam('image.json', 'Tag'),
-      }));
+    const localDeployment = new LocalDeploymentStage(this, 'LocalStage', {
+      imageTag: containerArtifact.getParam('image.json', 'Tag'),
+    })
+
+    pipeline.addApplicationStage(localDeployment);
   }
 }
