@@ -10,7 +10,7 @@ export class CicdInfraStack extends cdk.Stack {
     super(scope, id, props);
 
     const repository = new ecr.Repository(this, 'Repository', {
-      repositoryName: 'cdk-cicd',
+      repositoryName: 'cdk-cicd/app',
     });
 
     const sourceArtifact = new codepipeline.Artifact();
