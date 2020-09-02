@@ -45,7 +45,7 @@ export class CicdInfraStack extends cdk.Stack {
     });
 
     // Build and Publish application artifacts
-    const buildStage = pipeline.addStage('Build')
+    const buildStage = pipeline.addStage('AppBuild')
 
     const buildRole = new iam.Role(this, 'DockerBuildRole', {
       assumedBy: new iam.ServicePrincipal('codebuild.amazonaws.com'),
@@ -68,7 +68,7 @@ export class CicdInfraStack extends cdk.Stack {
     }));
 
     // Deploy - Local
-    const localStage = new LocalDeploymentStage(this, 'DeployLocal');
+    const localStage = new LocalDeploymentStage(this, 'AppDeployLocal');
     pipeline.addApplicationStage(localStage);
   }
 
