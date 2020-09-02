@@ -1,4 +1,3 @@
-import * as path from 'path';
 import * as cdk from '@aws-cdk/core';
 import * as codepipeline from '@aws-cdk/aws-codepipeline';
 import * as codepipeline_actions from '@aws-cdk/aws-codepipeline-actions';
@@ -14,12 +13,8 @@ export class CicdInfraStack extends cdk.Stack {
   constructor(scope: cdk.Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
-    const repository = new ecr.Repository(this, 'Repository', {
-      repositoryName: 'cdk-cicd/app',
-    });
-
-    const sourceArtifact = new codepipeline.Artifact('');
-    const cdkOutputArtifact = new codepipeline.Artifact('');
+    const sourceArtifact = new codepipeline.Artifact();
+    const cdkOutputArtifact = new codepipeline.Artifact();
 
     const pipeline = new pipelines.CdkPipeline(this, 'CdkPipeline', {
       pipelineName: 'cdk-cdkpipeline',
@@ -45,26 +40,27 @@ export class CicdInfraStack extends cdk.Stack {
     });
 
     // Build and Publish application artifacts
-    const buildStage = pipeline.addStage('AppBuild')
+    const repository = new ecr.Repository(this, 'Repository', {
+      repositoryName: 'cdk-cicd/app',
+    });
 
     const buildRole = new iam.Role(this, 'DockerBuildRole', {
       assumedBy: new iam.ServicePrincipal('codebuild.amazonaws.com'),
     });
     repository.grantPullPush(buildRole);
-
-    const build = new codebuild.Project(this, 'DockerBuild', {
-      role: buildRole,
-      environment: {
-        buildImage: codebuild.LinuxBuildImage.STANDARD_4_0,
-        privileged: true,
-      },
-      buildSpec: this.getDockerBuildSpec(repository.repositoryUri),
-    });
-
+    
+    const buildStage = pipeline.addStage('AppBuild')
     buildStage.addActions(new codepipeline_actions.CodeBuildAction({
       actionName: 'DockerBuild',
-      project: build,
       input: sourceArtifact,
+      project: new codebuild.Project(this, 'DockerBuild', {
+        role: buildRole,
+        environment: {
+          buildImage: codebuild.LinuxBuildImage.STANDARD_4_0,
+          privileged: true,
+        },
+        buildSpec: this.getDockerBuildSpec(repository.repositoryUri),
+      }),
     }));
 
     // Deploy - Local
@@ -98,14 +94,5 @@ export class CicdInfraStack extends cdk.Stack {
         },
       },
     });
-  }
-
-  getStackArtifactTemplatePath(stage: cdk.Stage, artifactId: string): string {
-    const stageAssembly = stage.synth();
-    const stageStackArtifact = stageAssembly.getStackArtifact(artifactId);
-
-    const fullTemplatePath = path.join(stageAssembly.directory, stageStackArtifact.templateFile);
-    const artifactTemplatePath = path.relative('cdk.out/', fullTemplatePath);
-    return artifactTemplatePath;
   }
 }
