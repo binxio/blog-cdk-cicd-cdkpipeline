@@ -41,6 +41,7 @@ export class ServiceStack extends cdk.Stack {
         containerPort: 8080,
         image: ecs.ContainerImage.fromEcrRepository(repository, imageTag),
       },
+
       publicLoadBalancer: true,
       healthCheckGracePeriod: cdk.Duration.seconds(10),
     });
@@ -49,6 +50,8 @@ export class ServiceStack extends cdk.Stack {
     serviceScaling.scaleOnCpuUtilization('ScalingCpu', {
       targetUtilizationPercent: 60,
     });
+
+    albService.targetGroup.setAttribute("deregistration_delay.timeout_seconds", "30");
 
     albService.targetGroup.configureHealthCheck({
       enabled: true,
