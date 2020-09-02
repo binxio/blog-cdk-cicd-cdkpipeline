@@ -5,7 +5,6 @@ import * as ecs from '@aws-cdk/aws-ecs';
 import * as ecs_patterns from '@aws-cdk/aws-ecs-patterns';
 
 export class ServiceStack extends cdk.Stack {
-  static readonly ImageTagParameter: string = "ImageTag";
 
   constructor(scope: cdk.Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
@@ -26,27 +25,34 @@ export class ServiceStack extends cdk.Stack {
     });
 
     const repository = ecr.Repository.fromRepositoryName(this, 'Repository', 'cdk-cicd/app');
-    const imageTag = new cdk.CfnParameter(this, ServiceStack.ImageTagParameter, {
-      type: 'String',
-      default: 'latest',
-    });
+    const imageTag = process.env.CODEBUILD_RESOLVED_SOURCE_VERSION || 'local';
 
     const cluster = new ecs.Cluster(this, 'Cluster', {
       clusterName: 'cdk-cicd',
       vpc: vpc,
     });
 
-    new ecs_patterns.ApplicationLoadBalancedFargateService(this, 'Service', {
+    const albService = new ecs_patterns.ApplicationLoadBalancedFargateService(this, 'Service', {
       cluster: cluster,
       cpu: 256,
       memoryLimitMiB: 512,
-      desiredCount: 2,
       taskImageOptions: {
         containerName: 'app',
         containerPort: 8080,
-        image: ecs.ContainerImage.fromEcrRepository(repository, imageTag.valueAsString),
+        image: ecs.ContainerImage.fromEcrRepository(repository, imageTag),
       },
       publicLoadBalancer: true,
+      healthCheckGracePeriod: cdk.Duration.seconds(10),
     });
+
+    const serviceScaling = albService.service.autoScaleTaskCount({ maxCapacity: 10 });
+    serviceScaling.scaleOnCpuUtilization('ScalingCpu', {
+      targetUtilizationPercent: 60,
+    });
+
+    albService.targetGroup.configureHealthCheck({
+      enabled: true,
+      path: '/_health',
+    })
   }
 }

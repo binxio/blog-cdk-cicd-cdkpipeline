@@ -20,7 +20,6 @@ export class CicdInfraStack extends cdk.Stack {
 
     const sourceArtifact = new codepipeline.Artifact('github');
     const cdkOutputArtifact = new codepipeline.Artifact('templates');
-    const containerArtifact = new codepipeline.Artifact('containers');
 
     const pipeline = new pipelines.CdkPipeline(this, 'CdkPipeline', {
       pipelineName: 'cdk-cdkpipeline',
@@ -46,7 +45,7 @@ export class CicdInfraStack extends cdk.Stack {
     });
 
     // Build and Publish application artifacts
-    const buildStage = pipeline.addStage('BuildApp')
+    const buildStage = pipeline.addStage('Build')
 
     const buildRole = new iam.Role(this, 'DockerBuildRole', {
       assumedBy: new iam.ServicePrincipal('codebuild.amazonaws.com'),
@@ -66,23 +65,11 @@ export class CicdInfraStack extends cdk.Stack {
       actionName: 'DockerBuild',
       project: build,
       input: sourceArtifact,
-      outputs: [ containerArtifact ],
     }));
 
     // Deploy - Local
-    const localDeployStage = pipeline.addStage('LocalDeploy');
-
-    const localStage = new LocalDeploymentStage(this, 'LocalStage');
-    localDeployStage.addActions(new codepipeline_actions.CloudFormationCreateUpdateStackAction({
-      actionName: 'Service.Deploy',
-      extraInputs: [ containerArtifact ],
-      stackName: localStage.serviceStack.stackName,
-      templatePath: cdkOutputArtifact.atPath(this.getStackArtifactTemplatePath(localStage, localStage.serviceStack.artifactId)),
-      adminPermissions: true,
-      parameterOverrides: {
-        'ImageTag': containerArtifact.getParam('image.json', 'Tag'),
-      },
-    }));
+    const localStage = new LocalDeploymentStage(this, 'DeployLocal');
+    pipeline.addApplicationStage(localStage);
   }
 
   getDockerBuildSpec(repositoryUri: string): codebuild.BuildSpec {
@@ -107,14 +94,9 @@ export class CicdInfraStack extends cdk.Stack {
             'echo Build completed on `date`',
             'echo Pushing the Docker image...',
             `docker push ${repositoryUri}:$CODEBUILD_RESOLVED_SOURCE_VERSION`,
-            'printf \'{"Tag":"%s"}\' "$CODEBUILD_RESOLVED_SOURCE_VERSION" > /tmp/image.json',
           ]
         },
       },
-      artifacts: {
-        files: ['/tmp/image.json'],
-        'discard-paths': 'yes',
-      }
     });
   }
 

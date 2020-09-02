@@ -3,7 +3,7 @@ import { ServiceStack } from './service';
 
 export class LocalDeploymentStage extends cdk.Stage {
     
-    public readonly serviceStack: ServiceStack;
+  public readonly serviceStack: ServiceStack;
 
   constructor(scope: cdk.Construct, id: string, props?: cdk.StageProps) {
     super(scope, id, props);
